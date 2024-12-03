@@ -6,7 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import qrcodeapi.service.BufferedImageService;
+import qrcodeapi.service.QRCodeService;
 
 import java.awt.image.BufferedImage;
 import java.util.Set;
@@ -15,10 +15,11 @@ import java.util.Set;
 public class QRCodeController {
 
     private static final Set<String> VALID_FILE_TYPES = Set.of("png", "jpeg", "gif");
-    private final BufferedImageService bufferedImageService;
+    private static final Set<String> VALID_CORRECTION_TYPES = Set.of("L", "M", "Q", "H");
+    private final QRCodeService qrCodeService;
 
-    public QRCodeController(BufferedImageService bufferedImageService) {
-        this.bufferedImageService = bufferedImageService;
+    public QRCodeController(QRCodeService qrCodeService) {
+        this.qrCodeService = qrCodeService;
     }
 
     @GetMapping("/api/health")
@@ -28,9 +29,11 @@ public class QRCodeController {
 
     // http://localhost:8080/api/qrcode?contents="hello"&size=250&type=png
     @GetMapping(path = "/api/qrcode")
-    public ResponseEntity<?> getImage(@RequestParam("contents") String contents, @RequestParam("size") int size, @RequestParam("type") String type) {
-        //int QRCodeSize = Integer.parseInt(size);
-        if (contents == null || contents.trim().equals("")) {
+    public ResponseEntity<?> getImage(@RequestParam(value = "contents") String contents,
+                                      @RequestParam(value = "size", defaultValue = "250") int size,
+                                      @RequestParam(value = "type", defaultValue = "png") String type,
+                                      @RequestParam(value = "correction", defaultValue = "L") String correction) {
+        if (contents == null || contents.trim().isEmpty()) {
             return ResponseEntity.badRequest()
                     .body("""
                             {
@@ -46,6 +49,14 @@ public class QRCodeController {
                             }
                             """);
         }
+        if (!VALID_CORRECTION_TYPES.contains(correction.toUpperCase())){
+            return ResponseEntity.badRequest()
+                    .body("""
+                            {
+                              "error": "Permitted error correction levels are L, M, Q, H"
+                            }
+                            """);
+        }
         if (!VALID_FILE_TYPES.contains(type.toLowerCase())) {
             return ResponseEntity.badRequest()
                     .body("""
@@ -55,7 +66,7 @@ public class QRCodeController {
                             """);
         }
 
-        BufferedImage bufferedImage = bufferedImageService.generateWhiteImage(contents, size, size);
+        BufferedImage bufferedImage = qrCodeService.generateQRCode(contents, size, size, correction);
 
         return ResponseEntity
                 .ok()
