@@ -26,9 +26,18 @@ public class QRCodeController {
         return new ResponseEntity<>(null, HttpStatus.OK);
     }
 
+    // http://localhost:8080/api/qrcode?contents="hello"&size=250&type=png
     @GetMapping(path = "/api/qrcode")
-    public ResponseEntity<?> getImage(@RequestParam("size") int size, @RequestParam("type") String type) {
+    public ResponseEntity<?> getImage(@RequestParam("contents") String contents, @RequestParam("size") int size, @RequestParam("type") String type) {
         //int QRCodeSize = Integer.parseInt(size);
+        if (contents == null || contents.trim().equals("")) {
+            return ResponseEntity.badRequest()
+                    .body("""
+                            {
+                              "error": "Contents cannot be null or blank"
+                            }
+                            """);
+        }
         if (size < 150 || size > 350) {
             return ResponseEntity.badRequest()
                     .body("""
@@ -46,7 +55,7 @@ public class QRCodeController {
                             """);
         }
 
-        BufferedImage bufferedImage = bufferedImageService.generateWhiteImage(size, size);
+        BufferedImage bufferedImage = bufferedImageService.generateWhiteImage(contents, size, size);
 
         return ResponseEntity
                 .ok()
